@@ -1,0 +1,9 @@
+- hosts: node
+  pre_tasks:
+    - name: Set kubernetes_master
+      set_fact:
+        kubernetes_master: "{{groups['master'] | first}}"
+        kubernetes_version: "{{lookup('env','KUBERNETES_VERSION')}}"
+      when: kubernetes_master is not defined
+  roles:
+    - ansible-role-kubernetes

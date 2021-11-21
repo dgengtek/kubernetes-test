@@ -1,0 +1,9 @@
+- name: "Create {{item}} dir"
+  file: 
+    path: "/etc/{{item}}" 
+    state: directory
+
+- name: "Deploy {{item}} config"
+  template:
+    src: "templates/{{item}}.j2"
+    dest: "/etc/{{item}}/{{item}}.cfg"

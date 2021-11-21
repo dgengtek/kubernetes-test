@@ -1,0 +1,102 @@
+global
+  stats socket /var/run/api.sock user haproxy group haproxy mode 660 level admin expose-fd listeners
+  log stdout format raw local0 info
+  maxconn 1024
+
+
+defaults
+  mode http
+  log global
+  option httplog
+  option dontlognull
+  option http-server-close
+  option forwardfor except 127.0.0.0/8
+  option redispatch
+  retries 1
+  timeout queue 20s
+  timeout client 20s
+  timeout server 20s
+  timeout http-keep-alive 10s
+  timeout check 5s
+  timeout connect 5s
+  timeout http-request 10s
+  default-server init-addr last,libc,none
+
+
+frontend stats
+  bind *:8404
+  stats enable
+  stats uri /
+  stats refresh 10s
+
+
+frontend kube_api_server
+  bind 0.0.0.0:{{cpn_api_ha_port}}
+  mode tcp
+  option tcplog
+  default_backend k8_cpn
+
+
+frontend ingress_http
+  bind 0.0.0.0:80
+  mode tcp
+  option tcplog
+  default_backend traefik_http
+
+
+frontend ingress_https
+  bind 0.0.0.0:443
+  mode tcp
+  option tcplog
+  default_backend traefik_https
+
+
+frontend ingress_httpalt
+  bind 0.0.0.0:9090
+  mode tcp
+  option tcplog
+  default_backend traefik_httpalt
+
+
+backend traefik_http
+  balance roundrobin
+  mode tcp
+  option tcplog
+
+  {% for host in groups["cpn"] -%}
+  server {{hostvars[host]["ansible_hostname"]}} {{hostvars[host]["ansible_host"]}}:10080 check
+  {% endfor %}
+
+
+backend traefik_https
+  balance roundrobin
+  mode tcp
+  option tcplog
+
+  {% for host in groups["cpn"] -%}
+  server {{hostvars[host]["ansible_hostname"]}} {{hostvars[host]["ansible_host"]}}:10443 check
+  {% endfor %}
+
+
+backend traefik_httpalt
+  balance roundrobin
+  mode tcp
+  option tcplog
+
+  {% for host in groups["cpn"] -%}
+  server {{hostvars[host]["ansible_hostname"]}} {{hostvars[host]["ansible_host"]}}:19090 check
+  {% endfor %}
+
+
+backend k8_cpn
+  option httpchk GET /healthz
+  option ssl-hello-chk
+  http-check expect status 200
+
+  balance roundrobin
+  mode tcp
+  option tcplog
+
+  {% for host in groups["cpn"] -%}
+  server {{hostvars[host]["ansible_hostname"]}} {{hostvars[host]["ansible_host"]}}:{{cpn_api_port}} check
+  {% endfor %}

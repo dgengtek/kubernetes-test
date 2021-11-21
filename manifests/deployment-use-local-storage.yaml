@@ -1,0 +1,53 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: example-local-claim
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 200Mi
+  storageClassName: local-hdd
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: example-local-storage
+  labels:
+    app: example-local-storage
+spec:
+  selector:
+    matchLabels:
+      app: example-local-storage
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: example-local-storage
+    spec:
+      containers:
+      - image: busybox
+        name: local-ls
+        command:
+          - sh
+          - -c
+          - 'while :; do ls -l /data; sleep 3; done'
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        volumeMounts:
+        - name: local-hdd
+          mountPath: /data
+          subPathExpr: $(POD_NAME)
+        resources:
+          limits:
+            memory: "32Mi"
+      volumes:
+      - name: local-hdd
+        persistentVolumeClaim:
+          claimName: example-local-claim

@@ -1,0 +1,49 @@
+global_defs {
+  router_id kubernetes
+}
+
+vrrp_script check_kubeapi {
+  script "/etc/keepalived/check_kubeapi.sh"
+  interval 3
+  weight -2
+  fall 10
+  rise 2
+}
+
+vrrp_instance kubernetes_api_vip {
+  interface {{ansible_default_ipv4.interface}}
+  use_vmac
+  vmac_xmit_base
+
+  {% if inventory_hostname in groups["master"] -%}
+  state MASTER
+  priority 100
+  {% else -%}
+  state BACKUP
+  priority 50
+  {% endif -%}
+
+  unicast_src_ip {{ansible_host}}
+
+  virtual_router_id 1
+  advert_int 1
+
+  authentication {
+    auth_type PASS
+    auth_pass verysecurepassword
+  }
+
+  unicast_peer {
+    {% for host in cpn_hosts | difference([ansible_host]) %}
+    {{host}}
+    {% endfor %}
+  }
+
+  virtual_ipaddress {
+    {{vip}}/{{network_prefix}}
+  }
+
+  track_script {
+    check_kubeapi
+  }
+}

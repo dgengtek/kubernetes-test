@@ -1,0 +1,10 @@
+.git/
+manifests/
+ansible/
+.env
+Dockerfile
+LICENSE
+main.sh
+README.md
+id_ansible
+admin.conf

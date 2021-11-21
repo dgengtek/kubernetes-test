@@ -1,0 +1,12 @@
+kubernetes_role: "node"
+kubernetes_config_kubelet_configuration:
+  cgroupDriver: "systemd"
+docker_daemon_options:
+  exec-opts: 
+    - "native.cgroupdriver=systemd"
+  log-driver: "json-file"
+  log-opts:
+    max-size: "100m"
+  storage-driver: "overlay2"
+  storage-opts:
+    - "overlay2.override_kernel_check=true"

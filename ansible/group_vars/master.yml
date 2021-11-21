@@ -1,0 +1,31 @@
+kubernetes_role: master
+kubernetes_kubeadm_init_extra_opts: ""
+# taint during init already
+kubernetes_allow_pods_on_master: True
+
+kubernetes_pod_network:
+  cni: 'calico'
+  cidr: '192.168.0.0/16'
+
+
+kubernetes_config_init_configuration:
+  nodeRegistration:
+    criSocket: "/var/run/dockershim.sock"
+    kubeletExtraArgs: {}
+    ignorePreflightErrors: []
+  localAPIEndpoint:
+    bindPort: "{{cpn_api_port}}"
+
+kubernetes_config_cluster_configuration:
+  controlPlaneEndpoint: "{{vip}}:{{cpn_api_ha_port}}"
+  networking:
+    serviceSubnet: "10.110.0.0/16"
+    podSubnet: "192.168.0.0/16"
+    dnsDomain: "k8.local"
+      # kubernetesVersion: "v1.22.2"
+  apiServer:
+    extraArgs:
+      authorization-mode: "Node,RBAC"
+  imageRepository: "k8s.gcr.io"
+  useHyperKubeImage: false
+  clusterName: "testk8"

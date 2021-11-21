@@ -1,0 +1,53 @@
+- hosts: all
+  gather_facts: no
+  tasks:
+    - name: Wait for nodes to become reachable
+      wait_for_connection:
+
+
+- hosts: all
+  roles:
+    - ansible-role-docker
+  tasks:
+    - name: Set kubernetes_master
+      set_fact:
+        kubernetes_master: "{{groups['master'] | first}}"
+        kubernetes_version: "{{lookup('env','KUBERNETES_VERSION')}}"
+    - name: Install dependencies
+      apt:
+        name: nfs-common
+        state: present
+
+
+- name: Install ha config
+  import_playbook: playbook_cpn_ha.yml
+
+
+# init master
+- hosts: master
+  roles:
+    - ansible-role-kubernetes
+  pre_tasks:
+    - name: Ignore existing scheduler manifest
+      set_fact:
+        kubernetes_kubeadm_init_extra_opts: "{{kubernetes_kubeadm_init_extra_opts + ' --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests' + ' --ignore-preflight-errors=FileAvailable--etc-kubernetes-manifests-kube-scheduler.yaml'}}"
+
+  tasks:
+    - name: Download kubectl admin user configuration
+      fetch:
+        src: /etc/kubernetes/admin.conf
+        dest: /wd/terraform/admin.conf
+        flat: True
+    - name: Block until master is ready
+      shell: "kubectl --kubeconfig /etc/kubernetes/admin.conf wait node/{{inventory_hostname}} --timeout=-1s --for=condition=ready"
+      async: 300
+      poll: 15
+
+
+- name: Join cpn nodes
+  import_playbook: playbook_join_cpn.yml
+
+
+- name: Join worker nodes
+  import_playbook: playbook_join_node.yml
+

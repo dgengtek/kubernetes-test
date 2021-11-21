@@ -1,0 +1,8 @@
+*.swp
+.env
+id_ansible
+admin.conf
+ansible/roles
+.terraform
+.terraform.lock.hcl
+terraform.tfstate*

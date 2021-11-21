@@ -1,0 +1,52 @@
+- hosts: cpn
+  vars:
+    cpn_hosts: "{{ groups['cpn'] | map('extract', hostvars, ['ansible_host']) }}"
+    master_host: "{{ groups['master'] | map('extract', hostvars, ['ansible_host']) | first }}"
+  tasks:
+    - name: Configure host
+      shell: |
+          echo ip_vs >>/etc/modules.conf
+          echo 'net.ipv4.ip_nonlocal_bind=1' > /etc/sysctl.d/99-keepalived.conf
+          echo 'net.ipv4.conf.all.arp_ignore=1' >> /etc/sysctl.d/99-keepalived.conf
+          echo 'net.ipv4.conf.all.arp_announce=1' >> /etc/sysctl.d/99-keepalived.conf
+          echo 'net.ipv4.conf.all.arp_filter=0' >> /etc/sysctl.d/99-keepalived.conf
+          echo 'net.ipv4.conf.{{ ansible_default_ipv4.interface }}.arp_filter = 1' >> /etc/sysctl.d/99-keepalived.conf
+
+          echo 'net.ipv6.conf.all.disable_ipv6=1' > /etc/sysctl.d/99-disable-ipv6.conf
+          echo 'net.ipv6.conf.default.disable_ipv6=1' >> /etc/sysctl.d/99-disable-ipv6.conf
+
+          sysctl -p /etc/sysctl.d/99-keepalived.conf
+          sysctl -p /etc/sysctl.d/99-disable-ipv6.conf
+
+    - name: Deploy HA frontend config
+      include_tasks: tasks/service_config.yml
+      vars:
+        enable_deploy_manifest: False
+      loop:
+        - haproxy
+        - keepalived
+
+    - name: "Deploy keepalived check"
+      template:
+        src: "templates/check_kubeapi.sh.j2"
+        dest: "/etc/keepalived/check_kubeapi.sh"
+
+    - debug: var=kubernetes_version
+    - name: "Create manifests dir"
+      file: 
+        path: "/etc/kubernetes/manifests" 
+        state: directory
+
+    - name: "Deploy kube-scheduler config"
+      template:
+        src: "files/scheduler.yaml"
+        dest: "/etc/kubernetes/kube-scheduler.yaml"
+
+    - name: "Deploy {{item}} manifest"
+      template:
+        src: "templates/{{item}}.j2.yaml"
+        dest: "/etc/kubernetes/manifests/{{item}}.yaml"
+      loop:
+        - haproxy
+        - keepalived
+        - kube-scheduler

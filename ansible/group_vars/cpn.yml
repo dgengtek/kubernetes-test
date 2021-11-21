@@ -1,0 +1,1 @@
+kubernetes_join_command_extra_opts: "--control-plane --apiserver-bind-port {{cpn_api_port}}"

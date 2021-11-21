@@ -1,0 +1,48 @@
+# init master
+- hosts: master
+  tasks:
+    - name: Set encryption key
+      shell: >
+        kubeadm init phase upload-certs
+        --upload-certs
+        --config {{ kubernetes_kubeadm_kubelet_config_file_path | default('/etc/kubernetes/kubeadm-kubelet-config.yaml') }} | sed -n '$p'
+      register: kubeadmin_upload_certs_key
+      changed_when: False
+      run_once: True
+    - debug: var=kubeadmin_upload_certs_key
+      tags:
+        - debug
+
+
+# join cpns to cluster
+- hosts: 'cpn:!master'
+  serial: 1
+  pre_tasks:
+    - name: Set kubernetes_master
+      set_fact:
+        kubernetes_master: "{{groups['master'] | first}}"
+        kubernetes_version: "{{lookup('env','KUBERNETES_VERSION')}}"
+      when: kubernetes_master is not defined
+    - debug: var=kubernetes_version
+    - name: Update join command for additional control planes
+      block:
+      - name: Get upload-certs encryption key from master
+        set_fact:
+          kubeadmin_upload_certs_key: "{{hostvars[kubernetes_master]['kubeadmin_upload_certs_key']['stdout']}}"
+      - debug: var=kubernetes_join_command_extra_opts
+        tags:
+          - debug
+      - debug: var=kubeadmin_upload_certs_key
+        tags:
+          - debug
+      - name: Add key to decrypt uploaded certificates to join command
+        set_fact:
+          kubernetes_join_command_extra_opts: "{{kubernetes_join_command_extra_opts + ' --certificate-key=' + kubeadmin_upload_certs_key + ' --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests' + ' --ignore-preflight-errors=FileAvailable--etc-kubernetes-manifests-kube-scheduler.yaml'}}"
+  roles:
+    - ansible-role-kubernetes
+  tasks:
+    - name: Block until cpn node is ready
+      shell: "kubectl --kubeconfig /etc/kubernetes/admin.conf wait node/{{inventory_hostname}} --timeout=-1s --for=condition=ready"
+      async: 300
+      poll: 15
+      ignore_errors: True
