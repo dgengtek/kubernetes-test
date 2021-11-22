@@ -19,9 +19,15 @@ Provided are manifests to experiment with the cluster:
 * helm managed with terraform
   * nfs-provisioner(requires local-static-provisioner to be applied from ./manifests)
 
+
 ## Requirements
 
-* libvirtd hypervisor with socket path /var/run/libvirt/libvirt-sock or pass the terraform variable TF_VAR_uri for a different location
+* docker
+  * if running the tools without a docker container see the [dockerfile](Dockerfile)
+* a hypervisor with 
+  * [X86_virtualization](https://en.wikipedia.org/wiki/X86_virtualization)
+  * [kvm](https://en.wikipedia.org/wiki/Kernel-based_Virtual_Machine)
+  * libvirtd socket path /var/run/libvirt/libvirt-sock or pass the terraform variable TF_VAR_uri for a different location
 * cloud-init image which uses systemd-networkd for network management
   * [packer-templates](https://github.com/dgengtek/packer-templates) contains configurations to build new images from a debian install to use for this repo
   * if you use prebuilt cloud-images provided by distributions
