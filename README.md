@@ -14,7 +14,7 @@ This repository contains an automated kubernetes cluster setup.
 
 Provided are manifests to experiment with the cluster:
 
-* ingress traefik daemonset on master nodes load balanced by haproxy with frontend ports:node ports(80:10080, 443:10443, 9090:19090)
+* ingress traefik daemonset on master nodes load balanced by haproxy with frontend <ha proxy port>:<host port>(80:10080, 443:10443, 9090:19090)
 * traefik example service whoami(Host: whoami.k8.local)
 * helm managed with terraform
   * nfs-provisioner(requires local-static-provisioner to be applied from ./manifests)
